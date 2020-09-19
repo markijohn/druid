@@ -40,6 +40,7 @@ You can find its changes [documented below](#060---2020-06-01).
 - Lens: Added Unit lens for type erased / display only widgets that do not need data. ([#1232] by [@rjwittams])
 - `WindowLevel` to control system window Z order, with Mac and GTK implementations  ([#1231] by [@rjwittams])
 - WIDGET_PADDING items added to theme and `Flex::with_default_spacer`/`Flex::add_default_spacer` ([#1220] by [@cmyr])
+- `RawLabel` widget displays text `Data`. ([#1252] by [@cmyr])
 
 ### Changed
 
@@ -464,6 +465,7 @@ Last release without a changelog :(
 [#1241]: https://github.com/linebender/druid/pull/1241
 [#1245]: https://github.com/linebender/druid/pull/1245
 [#1251]: https://github.com/linebender/druid/pull/1251
+[#1252]: https://github.com/linebender/druid/pull/1252
 
 [Unreleased]: https://github.com/linebender/druid/compare/v0.6.0...master
 [0.6.0]: https://github.com/linebender/druid/compare/v0.5.0...v0.6.0
