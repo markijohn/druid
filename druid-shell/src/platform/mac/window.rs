@@ -22,6 +22,7 @@ use std::mem;
 use std::sync::{Arc, Mutex, Weak};
 use std::time::Instant;
 
+use block::ConcreteBlock;
 use cocoa::appkit::{
     CGFloat, NSApp, NSApplication, NSAutoresizingMaskOptions, NSBackingStoreBuffered, NSEvent,
     NSView, NSViewHeightSizable, NSViewWidthSizable, NSWindow, NSWindowStyleMask,
@@ -53,10 +54,10 @@ use super::util::{assert_main_thread, make_nsstring};
 use crate::common_util::IdleCallback;
 use crate::dialog::{FileDialogOptions, FileDialogType, FileInfo};
 use crate::keyboard_types::KeyState;
-use crate::mouse::{Cursor, MouseButton, MouseButtons, MouseEvent};
+use crate::mouse::{Cursor, CursorDesc, MouseButton, MouseButtons, MouseEvent};
 use crate::region::Region;
 use crate::scale::Scale;
-use crate::window::{IdleToken, TimerToken, WinHandler, WindowLevel, WindowState};
+use crate::window::{FileDialogToken, IdleToken, TimerToken, WinHandler, WindowLevel, WindowState};
 use crate::Error;
 
 #[allow(non_upper_case_globals)]
@@ -144,6 +145,10 @@ struct ViewState {
     keyboard_state: KeyboardState,
     text: PietText,
 }
+
+#[derive(Clone)]
+// TODO: support custom cursors
+pub struct CustomCursor;
 
 impl WindowBuilder {
     pub fn new(_app: Application) -> WindowBuilder {
@@ -888,9 +893,16 @@ impl WindowHandle {
                 Cursor::NotAllowed => msg_send![nscursor, operationNotAllowedCursor],
                 Cursor::ResizeLeftRight => msg_send![nscursor, resizeLeftRightCursor],
                 Cursor::ResizeUpDown => msg_send![nscursor, resizeUpDownCursor],
+                // TODO: support custom cursors
+                Cursor::Custom(_) => msg_send![nscursor, arrowCursor],
             };
             let () = msg_send![cursor, set];
         }
+    }
+
+    pub fn make_cursor(&self, _cursor_desc: &CursorDesc) -> Option<Cursor> {
+        log::warn!("Custom cursors are not yet supported in the macOS backend");
+        None
     }
 
     pub fn request_timer(&self, deadline: std::time::Instant) -> TimerToken {
@@ -922,14 +934,50 @@ impl WindowHandle {
         }
     }
 
-    pub fn open_file_sync(&mut self, options: FileDialogOptions) -> Option<FileInfo> {
-        dialog::get_file_dialog_path(FileDialogType::Open, options)
-            .map(|s| FileInfo { path: s.into() })
+    pub fn open_file_sync(&mut self, _options: FileDialogOptions) -> Option<FileInfo> {
+        log::warn!("open_file_sync should no longer be called on mac!");
+        None
     }
 
-    pub fn save_as_sync(&mut self, options: FileDialogOptions) -> Option<FileInfo> {
-        dialog::get_file_dialog_path(FileDialogType::Save, options)
-            .map(|s| FileInfo { path: s.into() })
+    pub fn open_file(&mut self, options: FileDialogOptions) -> Option<FileDialogToken> {
+        self.open_save_impl(FileDialogType::Open, options)
+    }
+
+    pub fn save_as_sync(&mut self, _options: FileDialogOptions) -> Option<FileInfo> {
+        log::warn!("save_as_sync should no longer be called on mac!");
+        None
+    }
+
+    pub fn save_as(&mut self, options: FileDialogOptions) -> Option<FileDialogToken> {
+        self.open_save_impl(FileDialogType::Save, options)
+    }
+
+    fn open_save_impl(
+        &mut self,
+        ty: FileDialogType,
+        opts: FileDialogOptions,
+    ) -> Option<FileDialogToken> {
+        let token = FileDialogToken::next();
+        let self_clone = self.clone();
+        unsafe {
+            let panel = dialog::build_panel(ty, opts);
+            let block = ConcreteBlock::new(move |response: dialog::NSModalResponse| {
+                let url = dialog::get_path(panel, response).map(|s| FileInfo { path: s.into() });
+                let view = self_clone.nsview.load();
+                if let Some(view) = (*view).as_ref() {
+                    let view_state: *mut c_void = *view.get_ivar("viewState");
+                    let view_state = &mut *(view_state as *mut ViewState);
+                    if ty == FileDialogType::Open {
+                        (*view_state).handler.open_file(token, url);
+                    } else if ty == FileDialogType::Save {
+                        (*view_state).handler.save_as(token, url);
+                    }
+                }
+            });
+            let block = block.copy();
+            let () = msg_send![panel, beginWithCompletionHandler: block];
+        }
+        Some(token)
     }
 
     /// Set the title for this menu.

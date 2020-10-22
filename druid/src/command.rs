@@ -146,7 +146,7 @@ pub mod sys {
     use std::any::Any;
 
     use super::Selector;
-    use crate::{FileDialogOptions, FileInfo, SingleUse};
+    use crate::{FileDialogOptions, FileInfo, SingleUse, WindowConfig};
 
     /// Quit the running application. This command is handled by the druid library.
     pub const QUIT_APP: Selector = Selector::new("druid-builtin.quit-app");
@@ -178,6 +178,10 @@ pub mod sys {
     /// will automatically target the window containing the widget.
     pub const SHOW_WINDOW: Selector = Selector::new("druid-builtin.show-window");
 
+    /// Apply the configuration payload to an existing window. The target should be a WindowId.
+    pub const CONFIGURE_WINDOW: Selector<WindowConfig> =
+        Selector::new("druid-builtin.configure-window");
+
     /// Display a context (right-click) menu. The payload must be the [`ContextMenu`]
     /// object to be displayed.
     ///
@@ -204,7 +208,7 @@ pub mod sys {
     pub const NEW_FILE: Selector = Selector::new("druid-builtin.menu-file-new");
 
     /// When submitted by the application, a file picker dialog will be shown to the user,
-    /// and an [`OPEN_FILE`] command will be sent if a file is chosen.
+    /// and an [`OPEN_FILE`] command will be sent if a path is chosen.
     ///
     /// [`OPEN_FILE`]: constant.OPEN_FILE.html
     pub const SHOW_OPEN_PANEL: Selector<FileDialogOptions> =
@@ -213,7 +217,7 @@ pub mod sys {
     /// Sent when the user cancels an open file panel.
     pub const OPEN_PANEL_CANCELLED: Selector = Selector::new("druid-builtin.open-panel-cancelled");
 
-    /// Open a file, must be handled by the application.
+    /// Open a path, must be handled by the application.
     ///
     /// [`FileInfo`]: ../struct.FileInfo.html
     pub const OPEN_FILE: Selector<FileInfo> = Selector::new("druid-builtin.open-file-path");
@@ -229,11 +233,14 @@ pub mod sys {
     /// Sent when the user cancels a save file panel.
     pub const SAVE_PANEL_CANCELLED: Selector = Selector::new("druid-builtin.save-panel-cancelled");
 
-    /// Save the current file, must be handled by the application.
+    /// Save the current path, must be handled by the application.
     ///
     /// How this should be handled depends on the payload:
-    /// `Some(handle)`: the app should save to that file and store the `handle` for future use.
+    /// `Some(handle)`: the app should save to that path and store the `handle` for future use.
     /// `None`: the app should have received `Some` before and use the stored `FileInfo`.
+    ///
+    /// The path might be a file or a directory,
+    /// so always check whether it matches your expectations.
     pub const SAVE_FILE: Selector<Option<FileInfo>> = Selector::new("druid-builtin.menu-file-save");
 
     /// Show the print-setup window.

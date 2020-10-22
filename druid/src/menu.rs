@@ -107,7 +107,6 @@
 
 use std::num::NonZeroU32;
 
-use crate::keyboard_types::Key;
 use crate::kurbo::Point;
 use crate::shell::{HotKey, IntoKey, Menu as PlatformMenu, RawMods, SysMods};
 use crate::{commands, Command, Data, Env, LocalizedString, Selector};
@@ -347,7 +346,7 @@ impl<T: Data> MenuDesc<T> {
                     item.platform_id = MenuItemId::next();
                     menu.add_item(
                         item.platform_id.as_u32(),
-                        item.title.localized_str(),
+                        &item.title.localized_str(),
                         item.hotkey.as_ref(),
                         item.enabled,
                         item.selected,
@@ -617,7 +616,6 @@ pub mod sys {
                     LocalizedString::new("win-menu-file-exit"),
                     commands::QUIT_APP,
                 )
-                .hotkey(RawMods::Alt, Key::F4)
             }
         }
     }
